@@ -1,1 +1,44 @@
-#INCLUDE
+#include <math.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "inc/hw_memmap.h"
+#include "inc/hw_types.h"
+#include "inc/hw_gpio.h"
+#include "inc/tm4c123gh6pm.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/gpio.h"
+#include "driverlib/debug.h"
+#include "driverlib/pin_map.h"
+#include "driverlib/gpio.h"
+#include "driverlib/qei.h"
+#define constantFlow 1.6666667
+void ConfQEI(void);
+uint32_t velocity;
+double flow;
+
+int main(void)
+{
+    SysCtlClockSet(SYSCTL_SYSDIV_2_5 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_16MHZ);
+    ConfQEI();
+    while(1)
+        {
+            velocity = QEIVelocityGet(QEI1_BASE);
+            flow=(velocity*constantFlow)/1000;
+            SysCtlDelay(SysCtlClockGet()*0.005);
+        }
+}
+void ConfQEI(void)
+{
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOC);                    /*habilita el reloj para el puerto D*/
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_QEI1);                     /*Habilita el reloj para el periferico QEI0*/
+    GPIOPinConfigure(GPIO_PC5_PHA1);                                /*Configura el pin PD6 como el canal A del QEI0*/
+    GPIOPinConfigure(GPIO_PC6_PHB1);                                /*Configura el pin PD7 como el canal B del QEI0*/
+    GPIOPinTypeQEI(GPIO_PORTC_BASE, (GPIO_PIN_5 | GPIO_PIN_6));     /*Configura los pines PD6 y PD7 como los canales A y B*/
+    QEIConfigure(QEI1_BASE,(QEI_CONFIG_CAPTURE_A | QEI_CONFIG_NO_RESET | QEI_CONFIG_QUADRATURE | QEI_CONFIG_NO_SWAP), 2000);   /*configura el encoder para determinar la posicion del motor*/
+    QEIEnable(QEI1_BASE);                                           /*Habilta el encoder para el paradterminar la posicion del motor*/
+    QEIPositionSet(QEI1_BASE, 1000);                                /*Da una posicion incial al encoder de 1000*/
+    QEIVelocityConfigure(QEI1_BASE, QEI_VELDIV_2, SysCtlClockGet()); /*Divide los pulsos recividos por 80Mhz para obtener los pulsos por segundo*/
+    QEIVelocityEnable(QEI1_BASE);  /*Habilita el encoder para obtener la velocidad*/
+}
